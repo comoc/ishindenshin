@@ -84,7 +84,7 @@ main {
 .tile.small { font-size: 24px; }
 .tile .sub { font-size: 12px; color: #bbb; margin-top: 4px; }
 .tile.empty { background: transparent; pointer-events: none; }
-.tile.func { background: #4a3a3a; font-size: 38px; }
+.tile.func { background: #4a3a3a; font-size: 17px; }
 
 /* Scanning highlights — えんじ色の枠 */
 .row-highlight {
