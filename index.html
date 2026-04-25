@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>意思伝達アプリ</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="title">意思伝達</div>
+      <div class="breadcrumb" id="breadcrumb">メインメニュー</div>
+      <div class="hint">スイッチ：<kbd>Space</kbd> または <kbd>Enter</kbd></div>
+    </header>
+
+    <section class="text-area">
+      <textarea id="composed" readonly placeholder="ここに作成した文章が表示されます"></textarea>
+    </section>
+
+    <main id="panel-host" aria-live="polite"></main>
+
+    <footer class="settings-bar">
+      <div class="settings-left">
+        <span>走査速度：<strong id="speed-label">1.0秒</strong></span>
+        <span id="mode-label">列を走査中（横方向）</span>
+      </div>
+      <div class="settings-right">
+        <span class="tooltip" data-tip="走査をゆっくりにします">遅く [←]</span>
+        <span class="tooltip" data-tip="走査を速くします">速く [→]</span>
+        <span class="tooltip" data-tip="走査を一時停止／再開">停止 [P]</span>
+        <span class="tooltip" data-tip="メインメニューに戻る">戻る [Esc]</span>
+      </div>
+    </footer>
+
+    <div class="overlay hidden" id="overlay"></div>
+    <div class="toast hidden" id="toast"></div>
+  </div>
+  <script src="app.js" defer></script>
+</body>
+</html>
