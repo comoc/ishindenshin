@@ -66,7 +66,7 @@ const state = {
   colIndex: 0,
   rowDir: 1,                 // 走査進行方向
   colDir: 1,
-  rowCycles: 0,              // 行走査の周回数（3周で列走査へ自動復帰）
+  rowCycles: 0,              // 行走査の周回数（2周で列走査へ自動復帰）
   scanTimer: null,
   composedText: '',
   // 濁音切替用
@@ -385,7 +385,7 @@ function colHasSelectable(c) {
 }
 
 // 行走査：縦方向（選択列内のセルが上下に動く）。empty はスキップ。端で逆側へラップ（一方向）。
-// 3 周しても入力がなければ列走査へ自動復帰する。
+// 2 周しても入力がなければ列走査へ自動復帰する。
 function advanceRow() {
   const total = currentPanel.grid.length;
   const c = state.colIndex;
@@ -397,7 +397,7 @@ function advanceRow() {
     const cell = currentPanel.grid[next][c];
     if (cell && !cell.empty) break;
   }
-  if (state.rowCycles >= 3) {
+  if (state.rowCycles >= 2) {
     state.scanMode = 'col';
     state.rowCycles = 0;
     applyHighlight();
@@ -746,7 +746,7 @@ function showHelp() {
       <li>えんじ色の縦帯が横方向に移動 → スイッチで列を選択</li>
       <li>続いて選択列内のセルが縦方向に移動 → スイッチで文字や機能を選択</li>
       <li>端まで来ると反対側にループします（常に同じ方向に進みます）</li>
-      <li>列内を 3 周しても入力されなければ自動的に列走査へ戻ります</li>
+      <li>列内を 2 周しても入力されなければ自動的に列走査へ戻ります</li>
     </ul>
     <h3>濁音・半濁音の入力</h3>
     <ul>
