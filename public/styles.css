@@ -24,6 +24,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 
 .topbar {
@@ -33,19 +34,26 @@ body {
   padding: 10px 20px;
   background: #000;
   border-bottom: 3px solid var(--enji);
+  flex: 0 0 auto;
 }
 .title { font-size: 22px; font-weight: bold; color: var(--enji-light); }
-.breadcrumb { font-size: 16px; color: #ccc; flex: 1; }
-.hint { font-size: 13px; color: #999; }
+.breadcrumb { font-size: 16px; color: #ccc; flex: 1; min-width: 0; }
+.hint { font-size: 13px; color: #999; white-space: nowrap; }
+@media (max-width: 700px) {
+  .topbar { gap: 12px; padding: 8px 12px; }
+  .hint { display: none; }
+}
 kbd {
   background: #333; padding: 2px 6px; border-radius: 3px;
   border: 1px solid #555; font-family: monospace; font-size: 12px;
 }
 
-.text-area { padding: 8px 20px; }
+.text-area { padding: 8px 20px; flex: 0 0 auto; }
 #composed {
-  width: 100%; min-height: 70px; max-height: 130px;
-  font-size: 52px; padding: 10px 14px;
+  width: 100%;
+  height: clamp(60px, 14vh, 130px);
+  font-size: clamp(24px, 7vh, 52px);
+  padding: 10px 14px;
   background: #fff; color: #000;
   border: 3px solid var(--enji);
   border-radius: 6px;
@@ -54,14 +62,15 @@ kbd {
 }
 
 main {
-  flex: 1;
-  padding: 12px 20px;
-  overflow: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: clamp(4px, 1.5vmin, 12px) clamp(8px, 2vmin, 20px);
+  overflow: hidden;
 }
 
 .grid {
   display: grid;
-  gap: 6px;
+  gap: clamp(2px, 0.6vmin, 6px);
   height: 100%;
 }
 
@@ -72,19 +81,21 @@ main {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  padding: 10px 6px;
-  font-size: 64px;
+  padding: clamp(2px, 0.6vmin, 10px);
+  font-size: clamp(16px, 4.5vmin, 64px);
   border-radius: 6px;
-  min-height: 56px;
+  min-height: 0;
+  min-width: 0;
   border: 2px solid transparent;
   transition: background 0.08s, border-color 0.08s;
   text-align: center;
   line-height: 1.1;
+  overflow: hidden;
 }
-.tile.small { font-size: 24px; }
-.tile .sub { font-size: 12px; color: #bbb; margin-top: 4px; }
+.tile.small { font-size: clamp(12px, 2.2vmin, 24px); }
+.tile .sub { font-size: clamp(8px, 1.4vmin, 12px); color: #bbb; margin-top: 4px; }
 .tile.empty { background: transparent; pointer-events: none; }
-.tile.func { background: #4a3a3a; font-size: 22px; }
+.tile.func { background: #4a3a3a; font-size: clamp(11px, 2vmin, 22px); }
 
 /* Scanning highlights — えんじ色の枠 */
 .row-highlight {
@@ -116,6 +127,8 @@ main {
   border-top: 1px solid #333;
   font-size: 13px;
   color: #bbb;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
 }
 .settings-bar strong { color: var(--enji-light); }
 .settings-left, .settings-right { display: flex; gap: 16px; }
