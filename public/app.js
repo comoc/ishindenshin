@@ -266,7 +266,6 @@ function setPanel(key) {
   state.colDir = currentPanel.startColDir ?? 1;
   renderPanel();
   if (!colHasSelectable(state.colIndex)) advanceCol();
-  updateBreadcrumb();
 }
 
 function renderPanel() {
@@ -340,10 +339,6 @@ function applyHighlight() {
     if (sel) sel.classList.add('col-highlight');
     $('#mode-label').textContent = '行を走査中（縦方向）';
   }
-}
-
-function updateBreadcrumb() {
-  $('#breadcrumb').textContent = currentPanel.title;
 }
 
 // ---------- 走査ロジック --------------------------------------------------------

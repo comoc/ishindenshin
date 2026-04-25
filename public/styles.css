@@ -37,8 +37,7 @@ body {
   flex: 0 0 auto;
 }
 .title { font-size: 22px; font-weight: bold; color: var(--enji-light); }
-.breadcrumb { font-size: 16px; color: #ccc; flex: 1; min-width: 0; }
-.hint { font-size: 13px; color: #999; white-space: nowrap; }
+.hint { font-size: 13px; color: #999; white-space: nowrap; margin-left: auto; }
 @media (max-width: 700px) {
   .topbar { gap: 12px; padding: 8px 12px; }
   .hint { display: none; }
