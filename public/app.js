@@ -60,7 +60,6 @@ const EMOJIS = [
 // ---------- アプリ状態 ----------------------------------------------------------
 const state = {
   scanInterval: 1000,        // 走査間隔(ms)
-  paused: false,
   panelKey: 'main',
   scanMode: 'row',           // 'row' | 'col' | 'dakuten'
   rowIndex: 0,
@@ -187,7 +186,6 @@ function buildSettingsPanel() {
         { label: '速度を初期化', sub: '1.0 秒に戻す', kind: 'func', action: () => setSpeed(1000) },
       ],
       [
-        { label: '一時停止／再開', sub: '走査をトグル', kind: 'func', action: () => togglePause() },
         { label: 'ヘルプ', sub: '操作の説明', kind: 'func', action: () => showHelp() },
         { label: '戻る', kind: 'func', action: () => setPanel('main') },
       ],
@@ -351,7 +349,6 @@ function updateBreadcrumb() {
 // ---------- 走査ロジック --------------------------------------------------------
 function startScan() {
   stopScan();
-  if (state.paused) return;
   state.scanTimer = setInterval(tick, state.scanInterval);
 }
 
@@ -424,12 +421,6 @@ function firstSelectableRowInCol(c) {
 
 // ---------- スイッチ入力 --------------------------------------------------------
 function onSwitch() {
-  // 一時停止中はスイッチで再開（操作不能トラップ防止）
-  if (state.paused) {
-    togglePause();
-    return;
-  }
-
   // 濁音切替ウィンドウ中
   if (state.scanMode === 'dakuten') {
     cycleDakuten();
@@ -627,19 +618,8 @@ function adjustSpeed(deltaMs) {
 function setSpeed(ms) {
   state.scanInterval = Math.max(300, Math.min(3000, ms));
   $('#speed-label').textContent = (state.scanInterval / 1000).toFixed(1) + '秒';
-  if (!state.paused) restartScan();
+  restartScan();
   showToast(`走査速度: ${(state.scanInterval / 1000).toFixed(1)}秒`);
-}
-
-function togglePause() {
-  state.paused = !state.paused;
-  if (state.paused) {
-    stopScan();
-    showToast('走査を停止しました（再開：もう一度 P）');
-  } else {
-    startScan();
-    showToast('走査を再開しました');
-  }
 }
 
 // ---------- モーダル（電源オフ確認・ヘルプ） -------------------------------------
@@ -763,8 +743,6 @@ function showHelp() {
     <h3>介護者向けショートカット</h3>
     <ul>
       <li><kbd>←</kbd>／<kbd>→</kbd>：走査速度を遅く／速く</li>
-      <li><kbd>P</kbd>：走査の一時停止／再開</li>
-      <li><kbd>Esc</kbd>：走査状態をリセット</li>
       <li><kbd>H</kbd>：このヘルプを表示</li>
     </ul>
   `;
@@ -775,7 +753,7 @@ function showHelp() {
 let switchHeld = false;
 window.addEventListener('keydown', (e) => {
   // ページ全体のスクロールやデフォルト動作を抑止
-  const handled = [' ', 'Enter', 'ArrowLeft', 'ArrowRight', 'p', 'P', 'h', 'H', 'Escape'];
+  const handled = [' ', 'Enter', 'ArrowLeft', 'ArrowRight', 'h', 'H'];
   if (handled.includes(e.key)) e.preventDefault();
 
   if (e.key === ' ' || e.key === 'Enter') {
@@ -786,13 +764,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'ArrowLeft')  { adjustSpeed(+200); return; }
   if (e.key === 'ArrowRight') { adjustSpeed(-200); return; }
-  if (e.key === 'p' || e.key === 'P') { togglePause(); return; }
   if (e.key === 'h' || e.key === 'H') { showHelp(); return; }
-  if (e.key === 'Escape') {
-    if (state.modal) { closeModal(); return; }
-    setPanel('hiragana');   // 走査状態をリセット
-    return;
-  }
 });
 window.addEventListener('keyup', (e) => {
   if (e.key === ' ' || e.key === 'Enter') switchHeld = false;
