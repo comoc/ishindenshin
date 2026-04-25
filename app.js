@@ -20,6 +20,30 @@ const DAKUTEN_MAP = {
   'わ': ['わ', 'ゎ'],
 };
 
+// 「ぁ」ボタン用：捨て仮名（小書き）の双方向対応表
+const SMALL_KANA = (() => {
+  const pairs = [
+    ['あ','ぁ'], ['い','ぃ'], ['う','ぅ'], ['え','ぇ'], ['お','ぉ'],
+    ['や','ゃ'], ['ゆ','ゅ'], ['よ','ょ'],
+    ['つ','っ'],
+    ['わ','ゎ'],
+    ['か','ヵ'], ['け','ヶ'],
+  ];
+  const m = new Map();
+  for (const [big, small] of pairs) { m.set(big, small); m.set(small, big); }
+  return m;
+})();
+
+// 「゛」ボタン用：濁点／半濁点のサイクル定義（押すたびに次の候補へ）
+const DAKUTEN_CYCLES = {
+  'か': ['か','が'], 'き': ['き','ぎ'], 'く': ['く','ぐ'], 'け': ['け','げ'], 'こ': ['こ','ご'],
+  'さ': ['さ','ざ'], 'し': ['し','じ'], 'す': ['す','ず'], 'せ': ['せ','ぜ'], 'そ': ['そ','ぞ'],
+  'た': ['た','だ'], 'ち': ['ち','ぢ'], 'つ': ['つ','づ'], 'て': ['て','で'], 'と': ['と','ど'],
+  'は': ['は','ば','ぱ'], 'ひ': ['ひ','び','ぴ'], 'ふ': ['ふ','ぶ','ぷ'],
+  'へ': ['へ','べ','ぺ'], 'ほ': ['ほ','ぼ','ぽ'],
+  'う': ['う','ヴ'],
+};
+
 // ---------- 絵文字（130種以上） ------------------------------------------------
 const EMOJIS = [
   '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩',
@@ -41,8 +65,9 @@ const state = {
   scanMode: 'row',           // 'row' | 'col' | 'dakuten'
   rowIndex: 0,
   colIndex: 0,
-  rowDir: 1,                 // バウンス方向
+  rowDir: 1,                 // 走査進行方向
   colDir: 1,
+  rowCycles: 0,              // 行走査の周回数（3周で列走査へ自動復帰）
   scanTimer: null,
   composedText: '',
   // 濁音切替用
@@ -80,19 +105,23 @@ function buildHiraganaPanel() {
   // あ・か・さ・た・な・は・ま・や・ら・わ ／ 記号 ／ 機能 の順に並べる。
   const grid = [
     // あ段
-    [fn('一文字消去', () => deleteOne()), ch('ー'), ch('わ'), ch('ら'), ch('や'),
+    [fn('スペース', () => appendText('　')), ch('ー'), ch('わ'), ch('ら'), ch('や'),
      ch('ま'), ch('は'), ch('な'), ch('た'), ch('さ'), ch('か'), ch('あ')],
     // い段
-    [fn('スペース', () => appendText('　')), ch('、'), empty, ch('り'), empty,
+    [fn('一文字消去', () => deleteOne()), ch('、'), ch('を'), ch('り'), empty,
      ch('み'), ch('ひ'), ch('に'), ch('ち'), ch('し'), ch('き'), ch('い')],
     // う段
-    [fn('改行', () => appendText('\n')), ch('。'), ch('ん'), ch('る'), ch('ゆ'),
+    [fn('読み上げ', () => speakComposed()), ch('。'), ch('ん'), ch('る'), ch('ゆ'),
      ch('む'), ch('ふ'), ch('ぬ'), ch('つ'), ch('す'), ch('く'), ch('う')],
     // え段
-    [fn('全消去', () => clearText()), ch('？'), empty, ch('れ'), empty,
+    [empty, ch('？'),
+     { label: 'ぁ', kind: 'char', action: () => applySmallToLast() },
+     ch('れ'), empty,
      ch('め'), ch('へ'), ch('ね'), ch('て'), ch('せ'), ch('け'), ch('え')],
     // お段
-    [fn('戻る', () => setPanel('main')), ch('！'), ch('を'), ch('ろ'), ch('よ'),
+    [fn('全消去', () => clearText()), ch('！'),
+     { label: '゛', kind: 'char', action: () => applyDakutenToLast() },
+     ch('ろ'), ch('よ'),
      ch('も'), ch('ほ'), ch('の'), ch('と'), ch('そ'), ch('こ'), ch('お')],
   ];
 
@@ -232,6 +261,7 @@ function setPanel(key) {
   state.scanMode = 'col';     // 列スキャン（縦帯の横移動）から開始
   state.rowIndex = 0;
   state.rowDir = 1;
+  state.rowCycles = 0;
   currentPanel = PANEL_BUILDERS[key]();
   // パネルが指定していれば初期列・走査方向を採用
   state.colIndex = currentPanel.startCol ?? 0;
@@ -315,15 +345,7 @@ function applyHighlight() {
 }
 
 function updateBreadcrumb() {
-  const map = {
-    main: 'メインメニュー',
-    hiragana: 'メインメニュー > 文字入力',
-    emoji: 'メインメニュー > 絵文字',
-    appliance: 'メインメニュー > 家電操作',
-    settings: 'メインメニュー > 設定',
-    email: 'メインメニュー > メール／SNS',
-  };
-  $('#breadcrumb').textContent = map[state.panelKey] || currentPanel.title;
+  $('#breadcrumb').textContent = currentPanel.title;
 }
 
 // ---------- 走査ロジック --------------------------------------------------------
@@ -353,15 +375,13 @@ function tick() {
   else if (state.scanMode === 'row') advanceRow();
 }
 
-// 列走査：横方向（縦帯が左右に動く）。empty 列はスキップ。端でバウンス。
+// 列走査：横方向（縦帯が左右に動く）。empty 列はスキップ。端で逆側へラップ（一方向）。
 function advanceCol() {
   const total = currentPanel.columns;
   for (let i = 0; i < total; i++) {
     let next = state.colIndex + state.colDir;
-    if (next < 0 || next >= total) {
-      state.colDir *= -1;
-      next = state.colIndex + state.colDir;
-    }
+    if (next < 0) next = total - 1;
+    else if (next >= total) next = 0;
     state.colIndex = next;
     if (colHasSelectable(next)) break;
   }
@@ -372,19 +392,24 @@ function colHasSelectable(c) {
   return currentPanel.grid.some((row) => row[c] && !row[c].empty);
 }
 
-// 行走査：縦方向（選択列内のセルが上下に動く）。empty はスキップ。端でバウンス。
+// 行走査：縦方向（選択列内のセルが上下に動く）。empty はスキップ。端で逆側へラップ（一方向）。
+// 3 周しても入力がなければ列走査へ自動復帰する。
 function advanceRow() {
   const total = currentPanel.grid.length;
   const c = state.colIndex;
   for (let i = 0; i < total; i++) {
     let next = state.rowIndex + state.rowDir;
-    if (next < 0 || next >= total) {
-      state.rowDir *= -1;
-      next = state.rowIndex + state.rowDir;
-    }
+    if (next < 0)            { next = total - 1; state.rowCycles++; }
+    else if (next >= total)  { next = 0;         state.rowCycles++; }
     state.rowIndex = next;
     const cell = currentPanel.grid[next][c];
     if (cell && !cell.empty) break;
+  }
+  if (state.rowCycles >= 3) {
+    state.scanMode = 'col';
+    state.rowCycles = 0;
+    applyHighlight();
+    return;
   }
   applyHighlight();
 }
@@ -422,6 +447,7 @@ function onSwitch() {
     state.scanMode = 'row';
     state.rowIndex = firstSelectableRowInCol(state.colIndex);
     state.rowDir = 1;
+    state.rowCycles = 0;       // 周回カウンタをリセット
     applyHighlight();
     return;
   }
@@ -447,6 +473,38 @@ function inputHiragana(ch) {
   if (candidates && candidates.length > 1) {
     enterDakutenWindow(candidates);
   }
+}
+
+// 「ぁ」ボタン：直前の文字に小書き仮名があれば差し替え。なければそのまま入力。
+function applySmallToLast() {
+  const arr = Array.from(state.composedText);
+  if (arr.length === 0) { appendText('ぁ'); return; }
+  const last = arr[arr.length - 1];
+  const variant = SMALL_KANA.get(last);
+  if (variant) {
+    arr[arr.length - 1] = variant;
+    state.composedText = arr.join('');
+    $composed().value = state.composedText;
+  } else {
+    appendText('ぁ');
+  }
+}
+
+// 「゛」ボタン：直前の文字を濁音／半濁音サイクルで次の候補に。なければそのまま入力。
+function applyDakutenToLast() {
+  const arr = Array.from(state.composedText);
+  if (arr.length === 0) { appendText('゛'); return; }
+  const last = arr[arr.length - 1];
+  for (const cycle of Object.values(DAKUTEN_CYCLES)) {
+    const idx = cycle.indexOf(last);
+    if (idx >= 0) {
+      arr[arr.length - 1] = cycle[(idx + 1) % cycle.length];
+      state.composedText = arr.join('');
+      $composed().value = state.composedText;
+      return;
+    }
+  }
+  appendText('゛');
 }
 
 function appendText(s) {
@@ -645,10 +703,8 @@ function advanceModal() {
   if (!m || !m.options.length) return;
   if (m.options.length === 1) { m.index = 0; highlightModal(); return; }
   let next = m.index + m.dir;
-  if (next < 0 || next >= m.options.length) {
-    m.dir *= -1;
-    next = m.index + m.dir;
-  }
+  if (next < 0) next = m.options.length - 1;
+  else if (next >= m.options.length) next = 0;
   m.index = next;
   highlightModal();
 }
@@ -695,7 +751,8 @@ function showHelp() {
       <li><strong>スイッチ：</strong>Space または Enter</li>
       <li>えんじ色の縦帯が横方向に移動 → スイッチで列を選択</li>
       <li>続いて選択列内のセルが縦方向に移動 → スイッチで文字や機能を選択</li>
-      <li>枠が画面の端に来ると自動で反転します</li>
+      <li>端まで来ると反対側にループします（常に同じ方向に進みます）</li>
+      <li>列内を 3 周しても入力されなければ自動的に列走査へ戻ります</li>
     </ul>
     <h3>濁音・半濁音の入力</h3>
     <ul>
@@ -707,7 +764,7 @@ function showHelp() {
     <ul>
       <li><kbd>←</kbd>／<kbd>→</kbd>：走査速度を遅く／速く</li>
       <li><kbd>P</kbd>：走査の一時停止／再開</li>
-      <li><kbd>Esc</kbd>：メインメニューに戻る</li>
+      <li><kbd>Esc</kbd>：走査状態をリセット</li>
       <li><kbd>H</kbd>：このヘルプを表示</li>
     </ul>
   `;
@@ -733,7 +790,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'h' || e.key === 'H') { showHelp(); return; }
   if (e.key === 'Escape') {
     if (state.modal) { closeModal(); return; }
-    setPanel('main');
+    setPanel('hiragana');   // 走査状態をリセット
     return;
   }
 });
@@ -744,7 +801,7 @@ window.addEventListener('keyup', (e) => {
 // ---------- 起動 ---------------------------------------------------------------
 function init() {
   setSpeed(1000);
-  setPanel('main');
+  setPanel('hiragana');
   startScan();
   showToast('スイッチ：Space または Enter で操作', 3000);
 }
