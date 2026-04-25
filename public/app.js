@@ -775,6 +775,8 @@ function init() {
   setSpeed(1000);
   setPanel('hiragana');
   startScan();
+  $('#btn-slower').addEventListener('click', () => adjustSpeed(+200));
+  $('#btn-faster').addEventListener('click', () => adjustSpeed(-200));
   showToast('スイッチ：Space または Enter で操作', 3000);
 }
 document.addEventListener('DOMContentLoaded', init);
