@@ -629,7 +629,9 @@ function loadSavedSpeed(fallback) {
 }
 
 function setSpeed(ms) {
-  state.scanInterval = Math.max(300, Math.min(3000, ms));
+  // ±200ms で操作するため、200ms グリッドにスナップ。1.0秒など節目の値を必ず踏める。
+  const snapped = Math.round(ms / 200) * 200;
+  state.scanInterval = Math.max(200, Math.min(3000, snapped));
   $('#speed-label').textContent = (state.scanInterval / 1000).toFixed(1) + '秒';
   writeCookie(SPEED_COOKIE, state.scanInterval);
   restartScan();
