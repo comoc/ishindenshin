@@ -615,9 +615,28 @@ function adjustSpeed(deltaMs) {
   setSpeed(state.scanInterval + deltaMs);
 }
 
+const SPEED_COOKIE = 'scanInterval';
+
+function readCookie(name) {
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function writeCookie(name, value) {
+  // 1 年間保持（path=/ で全パス共有、SameSite=Lax で外部遷移時も付与）
+  document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`;
+}
+
+function loadSavedSpeed(fallback) {
+  const raw = readCookie(SPEED_COOKIE);
+  const n = raw == null ? NaN : parseInt(raw, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function setSpeed(ms) {
   state.scanInterval = Math.max(300, Math.min(3000, ms));
   $('#speed-label').textContent = (state.scanInterval / 1000).toFixed(1) + '秒';
+  writeCookie(SPEED_COOKIE, state.scanInterval);
   restartScan();
   showToast(`走査速度: ${(state.scanInterval / 1000).toFixed(1)}秒`);
 }
@@ -772,7 +791,7 @@ window.addEventListener('keyup', (e) => {
 
 // ---------- 起動 ---------------------------------------------------------------
 function init() {
-  setSpeed(1000);
+  setSpeed(loadSavedSpeed(1000));
   setPanel('hiragana');
   startScan();
   $('#btn-slower').addEventListener('click', () => adjustSpeed(+200));
