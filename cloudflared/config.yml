@@ -1,0 +1,4 @@
+ingress:
+  - hostname: ishindenshin.comoc.net
+    service: http://ishindenshin:80
+  - service: http_status:404
