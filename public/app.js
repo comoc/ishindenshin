@@ -297,7 +297,8 @@ function renderPanel() {
           el.appendChild(s);
         }
         // 介護者がマウス／タップでも操作できるように。走査と非同期に発火するので、
-        // 走査位置を押されたセルに同期してハイライトのズレを防ぐ。
+        // 走査位置を押されたセルに同期しつつ、走査ハイライトは一旦クリアして
+        // タップ・フラッシュだけが目立つようにする（次の走査 tick で再ハイライト）。
         el.addEventListener('click', () => {
           if (typeof cell.action !== 'function') return;
           // 濁音／捨て仮名ウィンドウ中に同じタイルを連続タップしたら、もう一度
@@ -310,16 +311,19 @@ function renderPanel() {
             return;
           }
           cancelDakuten();
+          state.scanMode = 'col';
           state.rowIndex = r;
           state.colIndex = c;
           state.rowCycles = 0;
+          // タップは直接入力として扱う：列ハイライト（赤枠）も行ハイライト
+          // （黄枠）も残らないように一旦すべて消し、タップ・フラッシュのみを表示。
+          // 走査タイマーは restartScan で仕切り直されるので、scanInterval 後に
+          // 改めて新しい列がハイライトされる。
+          clearHighlights();
           flashTap(el);
           cell.action();
-          // アクションでパネル切替や濁音モードに入っていなければ列モードに戻す
-          if (state.scanMode !== 'dakuten') {
-            state.scanMode = 'col';
-            applyHighlight();
-          }
+          // アクションが濁音モードに入った場合は内部の highlightDakutenCell が
+          // タップしたセルへ適切な濁音ハイライトを当ててくれるのでここでは触らない。
           restartScan();
         });
       }
