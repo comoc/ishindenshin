@@ -97,28 +97,29 @@ function showToast(msg, ms = 1800) {
 
 function buildHiraganaPanel() {
   const ch = (c) => ({ label: c, kind: 'char', action: () => inputHiragana(c) });
+  const em = (e) => ({ label: e, kind: 'char', action: () => appendText(e) });
   const empty = { empty: true };
   const fn = (label, action) => ({ label, kind: 'func', action });
 
-  // 5 段（あ/い/う/え/お）× 12 列。伝統的な 50 音表に倣い、右端から
-  // あ・か・さ・た・な・は・ま・や・ら・わ ／ 記号 ／ 機能 の順に並べる。
+  // 5 段（あ/い/う/え/お）× 13 列。伝統的な 50 音表に倣い、右端から
+  // あ・か・さ・た・な・は・ま・や・ら・わ ／ 記号 ／ 絵文字 ／ 機能 の順に並べる。
   const grid = [
     // あ段
-    [fn('スペース', () => appendText('　')), ch('ー'), ch('わ'), ch('ら'), ch('や'),
+    [fn('スペース', () => appendText('　')), em('🙋'), ch('ー'), ch('わ'), ch('ら'), ch('や'),
      ch('ま'), ch('は'), ch('な'), ch('た'), ch('さ'), ch('か'), ch('あ')],
     // い段
-    [fn('一文字消去', () => deleteOne()), ch('、'), ch('を'), ch('り'), empty,
+    [fn('一文字消去', () => deleteOne()), em('🙅'), ch('、'), ch('を'), ch('り'), empty,
      ch('み'), ch('ひ'), ch('に'), ch('ち'), ch('し'), ch('き'), ch('い')],
     // う段
-    [fn('読み上げ', () => speakComposed()), ch('。'), ch('ん'), ch('る'), ch('ゆ'),
+    [fn('読み上げ', () => speakComposed()), em('😊'), ch('。'), ch('ん'), ch('る'), ch('ゆ'),
      ch('む'), ch('ふ'), ch('ぬ'), ch('つ'), ch('す'), ch('く'), ch('う')],
     // え段
-    [empty, ch('？'),
+    [empty, em('😢'), ch('？'),
      { label: 'ぁ', kind: 'char', action: () => applySmallToLast() },
      ch('れ'), empty,
      ch('め'), ch('へ'), ch('ね'), ch('て'), ch('せ'), ch('け'), ch('え')],
     // お段
-    [fn('全消去', () => clearText()), ch('！'),
+    [fn('全消去', () => clearText()), em('😒'), ch('！'),
      { label: '゛', kind: 'char', action: () => applyDakutenToLast() },
      ch('ろ'), ch('よ'),
      ch('も'), ch('ほ'), ch('の'), ch('と'), ch('そ'), ch('こ'), ch('お')],
@@ -126,10 +127,10 @@ function buildHiraganaPanel() {
 
   return {
     title: '文字入力（ひらがな）',
-    columns: 12,
+    columns: 13,
     grid,
     // 右端の あ行 から走査開始し、左方向へ進む
-    startCol: 11,
+    startCol: 12,
     startColDir: -1,
   };
 }
