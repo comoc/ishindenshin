@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ishindenshin-v14';
+const CACHE_VERSION = 'ishindenshin-v16';
 const PRECACHE_URLS = [
   './',
   './index.html',

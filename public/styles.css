@@ -131,6 +131,15 @@ main {
   from { filter: brightness(1.2); }
   to   { filter: brightness(1); }
 }
+/* タップ・クリック時の押下フィードバック（既にハイライト中でも再生される） */
+.tile.tap-flash {
+  animation: tile-tap-flash 220ms ease-out;
+}
+@keyframes tile-tap-flash {
+  0%   { transform: scale(0.94); }
+  60%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
 /* 次のセルへ移る直前の 500ms で色を徐々にフェードして移動を予告 */
 .row-highlight.fading,
 .col-highlight.fading {

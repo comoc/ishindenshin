@@ -296,10 +296,22 @@ function renderPanel() {
           s.textContent = cell.sub;
           el.appendChild(s);
         }
-        // 介護者がマウスでも操作確認できるように
+        // 介護者がマウス／タップでも操作できるように。走査と非同期に発火するので、
+        // 走査位置を押されたセルに同期してハイライトのズレを防ぐ。
         el.addEventListener('click', () => {
-          // クリック時は走査をリセットして直接実行（介護者用）
-          if (typeof cell.action === 'function') cell.action();
+          if (typeof cell.action !== 'function') return;
+          cancelDakuten();
+          state.rowIndex = r;
+          state.colIndex = c;
+          state.rowCycles = 0;
+          flashTap(el);
+          cell.action();
+          // アクションでパネル切替や濁音モードに入っていなければ列モードに戻す
+          if (state.scanMode !== 'dakuten') {
+            state.scanMode = 'col';
+            applyHighlight();
+          }
+          restartScan();
         });
       }
       el.dataset.row = r;
@@ -314,6 +326,16 @@ function renderPanel() {
 
 function tilesOfCol(c) {
   return Array.from($panel().querySelectorAll(`.tile[data-col="${c}"]`));
+}
+
+// 既にハイライト中でもタップ時に必ず押下アニメーションを再生させる。
+// CSS の同一クラス再付与ではアニメーションが再起動しないので、
+// クラスを外して強制リフロー → 付け直しでサイクルを切る。
+function flashTap(el) {
+  el.classList.remove('tap-flash');
+  void el.offsetWidth;
+  el.classList.add('tap-flash');
+  setTimeout(() => el.classList.remove('tap-flash'), 260);
 }
 
 function tileAt(r, c) {
