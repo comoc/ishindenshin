@@ -46,6 +46,14 @@ flowchart LR
 
 ingress rules は token モードのため Cloudflare Zero Trust ダッシュボード側で管理（ローカルの `cloudflared/config.yml` は参考用）。
 
+## ポート
+
+| 用途 | ポート | 備考 |
+| --- | --- | --- |
+| ホスト → nginx コンテナ | `8081` → `80` | [docker-compose.yml](docker-compose.yml) の `ports` で公開。ブラウザから `http://localhost:8081/` でローカル確認 |
+| compose 内部ネットワーク | `ishindenshin:80` | cloudflared コンテナが service 名で名前解決して接続。Zero Trust の Public Hostname URL もこの値 |
+| 外部公開 | `443` (HTTPS) | Cloudflare Edge が終端し、QUIC トンネル経由で cloudflared コンテナへ |
+
 ## セットアップ
 
 ### 前提
@@ -63,23 +71,27 @@ ingress rules は token モードのため Cloudflare Zero Trust ダッシュボ
    # TUNNEL_TOKEN=eyJh... を Zero Trust ダッシュボードからコピーして貼り付け
    ```
 
-2. Cloudflare DNS に CNAME を追加
+2. ポート設定
+
+   公開するホスト側ポートは `docker-compose.yml` の `ports`（既定: `8081:80`）で指定します。`8081` が他用途で塞がっている場合は `<空きポート>:80` に変更してください（cloudflared 側の参照は `ishindenshin:80` のままで影響なし）。
+
+3. Cloudflare DNS に CNAME を追加
    - Name: `ishindenshin`（任意のサブドメイン）
    - Target: `<tunnel-uuid>.cfargotunnel.com`
    - Proxy status: **Proxied (オレンジ雲ON)**
 
-3. Zero Trust ダッシュボードで Public Hostname を登録
+4. Zero Trust ダッシュボードで Public Hostname を登録
    - Subdomain: `ishindenshin` / Domain: `comoc.net`
    - Type: **HTTP**
    - URL: `ishindenshin:80`（compose の service 名で解決）
 
-4. 起動
+5. 起動
 
    ```sh
    docker compose up -d
    ```
 
-5. 疎通確認
+6. 疎通確認
 
    ```sh
    curl -I http://localhost:8081/                     # ローカル
