@@ -320,8 +320,9 @@ function tileAt(r, c) {
 }
 
 function clearHighlights() {
+  clearFadeTimer();
   $panel().querySelectorAll('.tile').forEach((el) => {
-    el.classList.remove('row-highlight', 'col-highlight', 'dakuten-highlight');
+    el.classList.remove('row-highlight', 'col-highlight', 'dakuten-highlight', 'fading');
   });
 }
 
@@ -339,6 +340,28 @@ function applyHighlight() {
     if (sel) sel.classList.add('col-highlight');
     $('#mode-label').textContent = '行を走査中（縦方向）';
   }
+  scheduleFade();
+}
+
+// 次の走査までの最後 500ms でハイライト色をフェードし、移動を予告する。
+const FADE_DURATION = 500;
+let fadeTimer = null;
+
+function scheduleFade() {
+  clearFadeTimer();
+  if (state.scanInterval <= FADE_DURATION) return;
+  fadeTimer = setTimeout(() => {
+    $panel().querySelectorAll('.row-highlight, .col-highlight').forEach((el) => {
+      el.classList.add('fading');
+    });
+  }, state.scanInterval - FADE_DURATION);
+}
+
+function clearFadeTimer() {
+  if (fadeTimer) {
+    clearTimeout(fadeTimer);
+    fadeTimer = null;
+  }
 }
 
 // ---------- 走査ロジック --------------------------------------------------------
@@ -352,6 +375,7 @@ function stopScan() {
     clearInterval(state.scanTimer);
     state.scanTimer = null;
   }
+  clearFadeTimer();
 }
 
 function restartScan() {
