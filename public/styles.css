@@ -106,6 +106,33 @@ main {
   text-align: center;
   line-height: 1.1;
   overflow: hidden;
+  position: relative; /* tap-flash-overlay の絶対配置基準 */
+}
+/* タップ・クリック時にタイル内に重ねる押下フィードバック用オーバーレイ。
+   タイル本体の transform/filter を触らないので、列ハイライトや
+   highlight-boost アニメーションと完全に独立して必ず表示される */
+.tap-flash-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  border-radius: inherit;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation: tap-flash-overlay 280ms ease-out forwards;
+}
+@keyframes tap-flash-overlay {
+  from { opacity: 0.85; }
+  to   { opacity: 0; }
+}
+/* タップ中はその瞬間だけ走査枠（赤枠／box-shadow／背景色）を素のタイルへ
+   戻して、押下フィードバックが赤枠に紛れないようにする。
+   .row-highlight 等が !important を使っているため、ここも !important で
+   かつ specificity を上げて確実に勝たせる */
+.tile.tap-flashing {
+  border-color: transparent !important;
+  background: var(--tile-bg) !important;
+  box-shadow: none !important;
+  animation: none !important;
 }
 .tile.small { font-size: clamp(12px, 2.2vmin, 24px); }
 .tile .sub { font-size: clamp(8px, 1.4vmin, 12px); color: #bbb; margin-top: 4px; }
@@ -130,15 +157,6 @@ main {
 @keyframes highlight-boost {
   from { filter: brightness(1.2); }
   to   { filter: brightness(1); }
-}
-/* タップ・クリック時の押下フィードバック（既にハイライト中でも再生される） */
-.tile.tap-flash {
-  animation: tile-tap-flash 220ms ease-out;
-}
-@keyframes tile-tap-flash {
-  0%   { transform: scale(0.94); }
-  60%  { transform: scale(1.05); }
-  100% { transform: scale(1); }
 }
 /* 次のセルへ移る直前の 500ms で色を徐々にフェードして移動を予告 */
 .row-highlight.fading,

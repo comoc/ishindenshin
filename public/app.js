@@ -300,6 +300,15 @@ function renderPanel() {
         // 走査位置を押されたセルに同期してハイライトのズレを防ぐ。
         el.addEventListener('click', () => {
           if (typeof cell.action !== 'function') return;
+          // 濁音／捨て仮名ウィンドウ中に同じタイルを連続タップしたら、もう一度
+          // 同じ文字を挿入するのではなく候補をサイクル（か→が、は→ば→ぱ など）。
+          // キーボードの onSwitch と同じ挙動に揃える。
+          if (state.scanMode === 'dakuten'
+              && state.rowIndex === r && state.colIndex === c) {
+            flashTap(el);
+            cycleDakuten();
+            return;
+          }
           cancelDakuten();
           state.rowIndex = r;
           state.colIndex = c;
@@ -328,14 +337,26 @@ function tilesOfCol(c) {
   return Array.from($panel().querySelectorAll(`.tile[data-col="${c}"]`));
 }
 
-// 既にハイライト中でもタップ時に必ず押下アニメーションを再生させる。
-// CSS の同一クラス再付与ではアニメーションが再起動しないので、
-// クラスを外して強制リフロー → 付け直しでサイクルを切る。
+// タップ時の押下フィードバック。タイル本体の transform/filter を触ると
+// CSS の highlight-boost や applyHighlight のクラス再付与と干渉して
+// アニメーションが見えないケースが出るので、タイル内に独立した
+// オーバーレイ要素を一瞬重ねて消す方式にする。
+// 同時に .tap-flashing を付与して列ハイライト（赤枠/box-shadow）を
+// その瞬間だけ消し、フィードバックを際立たせる。
 function flashTap(el) {
-  el.classList.remove('tap-flash');
-  void el.offsetWidth;
-  el.classList.add('tap-flash');
-  setTimeout(() => el.classList.remove('tap-flash'), 260);
+  // 連打時に残っている前回オーバーレイを除去
+  el.querySelectorAll('.tap-flash-overlay').forEach((n) => n.remove());
+  el.classList.add('tap-flashing');
+  const flash = document.createElement('div');
+  flash.className = 'tap-flash-overlay';
+  el.appendChild(flash);
+  flash.addEventListener('animationend', () => {
+    if (flash.parentNode) flash.parentNode.removeChild(flash);
+    // 連打中は新しいオーバーレイが残っているので、その場合は class を残す
+    if (!el.querySelector('.tap-flash-overlay')) {
+      el.classList.remove('tap-flashing');
+    }
+  }, { once: true });
 }
 
 function tileAt(r, c) {
