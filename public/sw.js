@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ishindenshin-v2';
+const CACHE_VERSION = 'ishindenshin-v13';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -41,7 +41,8 @@ self.addEventListener('fetch', (event) => {
         if (fresh && fresh.ok) cache.put(req, fresh.clone());
         return fresh;
       } catch (_) {
-        const cached = await cache.match(req);
+        // ?v=N のキャッシュバスティング URL でも素のキャッシュにヒットさせる
+        const cached = await cache.match(req, { ignoreSearch: true });
         if (cached) return cached;
         if (req.mode === 'navigate') {
           const fallback = await cache.match('./index.html');

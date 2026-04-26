@@ -333,12 +333,10 @@ function applyHighlight() {
     tilesOfCol(state.colIndex).forEach((el) => {
       if (!el.classList.contains('empty')) el.classList.add('row-highlight');
     });
-    $('#mode-label').textContent = '列を走査中（横方向）';
   } else if (state.scanMode === 'row') {
     // 行スキャン：選択中の列内で 1 セルだけハイライト
     const sel = tileAt(state.rowIndex, state.colIndex);
     if (sel) sel.classList.add('col-highlight');
-    $('#mode-label').textContent = '行を走査中（縦方向）';
   }
   scheduleFade();
 }
@@ -555,7 +553,6 @@ function highlightDakutenCell() {
   clearHighlights();
   const sel = tileAt(state.rowIndex, state.colIndex);
   if (sel) sel.classList.add('dakuten-highlight');
-  $('#mode-label').textContent = `濁音切替: ${state.dakutenList.join(' → ')}（現在: ${state.dakutenList[state.dakutenIdx]}）`;
 }
 
 function cycleDakuten() {
@@ -789,9 +786,28 @@ function showHelp() {
   openModal({ title: 'ヘルプ', body, options: [{ label: '閉じる', action: () => {} }] });
 }
 
+// ---------- 入力デバイス接続状態（トップバー右の表示） --------------------------
+function setKeyboardStatus(connected) {
+  const el = $('#kbd-status');
+  if (!el) return;
+  el.classList.toggle('connected', connected);
+  el.title = connected ? 'キーボード（接続済）' : 'キーボード（未検出）';
+}
+
+function setGamepadStatus(connected, name) {
+  const el = $('#pad-status');
+  if (!el) return;
+  el.classList.toggle('connected', connected);
+  el.title = connected
+    ? `ゲームパッド（${name || '接続済'}）`
+    : 'ゲームパッド（未接続）';
+}
+
 // ---------- キーボード入力 ------------------------------------------------------
 let switchHeld = false;
 window.addEventListener('keydown', (e) => {
+  // 何らかのキー入力があった時点でキーボード接続を確定
+  setKeyboardStatus(true);
   // ページ全体のスクロールやデフォルト動作を抑止
   const handled = [' ', 'Enter', 'ArrowLeft', 'ArrowRight', 'h', 'H'];
   if (handled.includes(e.key)) e.preventDefault();
@@ -863,13 +879,113 @@ function stopGamepadPolling() {
 window.addEventListener('gamepadconnected', (e) => {
   const name = (e.gamepad && e.gamepad.id) ? e.gamepad.id.split('(')[0].trim() : 'コントローラー';
   showToast(`${name} を接続しました（○✕△□ / A B X Y がスイッチ）`, 2400);
+  setGamepadStatus(true, name);
   startGamepadPolling();
 });
 
 window.addEventListener('gamepaddisconnected', () => {
   const remaining = (navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean);
-  if (remaining.length === 0) stopGamepadPolling();
+  if (remaining.length === 0) {
+    stopGamepadPolling();
+    setGamepadStatus(false);
+  } else {
+    const first = remaining[0];
+    const name = first.id ? first.id.split('(')[0].trim() : null;
+    setGamepadStatus(true, name);
+  }
 });
+
+// ---------- インストール促進スナックバー（PWA, Temporary UI パターン） ---------
+// web.dev "Promote installation > Temporary UI" のスナックバー形式に倣い、
+// 画面下部に 7 秒だけ表示して引っ込める。出現〜表示維持〜退出は CSS アニメーションが
+// 担うので setTimeout の発火に依存しない（モバイル端末でのタイマー遅延対策）。
+// × で明示的に閉じられた場合のみ 14 日抑制クッキーを書く（自動消去では書かない）。
+const INSTALL_DISMISS_COOKIE = 'installDismissedAt';
+const INSTALL_DISMISS_DAYS = 14;
+
+let deferredInstallPrompt = null;
+let installSnackbarShown = false;
+
+function isPWAStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true; // iOS Safari
+}
+
+function isIOSSafari() {
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua)
+             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!isIOS) return false;
+  // iOS の Chrome / Firefox / Edge には「ホーム画面に追加」が無い
+  return !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+}
+
+function isInstallDismissedRecently() {
+  const raw = readCookie(INSTALL_DISMISS_COOKIE);
+  const ts = raw == null ? NaN : parseInt(raw, 10);
+  if (!Number.isFinite(ts)) return false;
+  return (Date.now() - ts) < INSTALL_DISMISS_DAYS * 86400000;
+}
+
+function maybeShowInstallSnackbar() {
+  if (installSnackbarShown) return;
+  if (isPWAStandalone() || isInstallDismissedRecently()) return;
+  if (deferredInstallPrompt) {
+    showInstallSnackbar({ ios: false });
+  } else if (isIOSSafari()) {
+    showInstallSnackbar({ ios: true });
+  }
+}
+
+function showInstallSnackbar({ ios }) {
+  const el = $('#install-snackbar');
+  if (!el) return;
+  installSnackbarShown = true;
+  $('#install-snackbar-title').textContent = ios ? 'ホーム画面に追加' : 'アプリをインストール';
+  $('#install-snackbar-text').textContent = ios
+    ? 'Safari の「共有」→「ホーム画面に追加」で追加できます'
+    : 'ホーム画面に追加するとオフラインでも使えます';
+  $('#btn-install').classList.toggle('hidden', ios);
+  el.classList.add('shown');
+}
+
+function hideInstallSnackbar() {
+  const el = $('#install-snackbar');
+  if (el) el.classList.remove('shown');
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  if (isPWAStandalone() || isInstallDismissedRecently()) return;
+  deferredInstallPrompt = e;
+  maybeShowInstallSnackbar();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  hideInstallSnackbar();
+  showToast('アプリをインストールしました');
+});
+
+async function triggerInstall() {
+  if (!deferredInstallPrompt) return;
+  hideInstallSnackbar();
+  deferredInstallPrompt.prompt();
+  try {
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'dismissed') {
+      writeCookie(INSTALL_DISMISS_COOKIE, String(Date.now()));
+    }
+  } finally {
+    // prompt() は同じイベントで一度しか呼べない
+    deferredInstallPrompt = null;
+  }
+}
+
+function dismissInstallSnackbar() {
+  hideInstallSnackbar();
+  writeCookie(INSTALL_DISMISS_COOKIE, String(Date.now()));
+}
 
 // ---------- 起動 ---------------------------------------------------------------
 function init() {
@@ -878,6 +994,9 @@ function init() {
   startScan();
   $('#btn-slower').addEventListener('click', () => adjustSpeed(+200));
   $('#btn-faster').addEventListener('click', () => adjustSpeed(-200));
+  $('#btn-install').addEventListener('click', triggerInstall);
+  $('#btn-install-dismiss').addEventListener('click', dismissInstallSnackbar);
+  maybeShowInstallSnackbar();
   showToast('スイッチ：Space / Enter、または ○✕△□ / A B X Y で操作', 3000);
 }
 document.addEventListener('DOMContentLoaded', init);

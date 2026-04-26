@@ -36,15 +36,31 @@ body {
   border-bottom: 3px solid var(--enji);
   flex: 0 0 auto;
 }
-.title { font-size: 22px; font-weight: bold; color: var(--enji-light); }
-.hint { font-size: 13px; color: #999; white-space: nowrap; margin-left: auto; }
+.title { font-size: 11px; font-weight: bold; color: var(--enji-light); }
+.hint { font-size: 11px; color: #999; white-space: nowrap; margin-left: auto; }
+.input-status {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 16px;
+}
+.input-status-item {
+  opacity: 0.3;
+  filter: grayscale(1);
+  transition: opacity 200ms, filter 200ms;
+}
+.input-status-item.connected {
+  opacity: 1;
+  filter: grayscale(0);
+}
 @media (max-width: 700px) {
   .topbar { gap: 12px; padding: 8px 12px; }
   .hint { display: none; }
+  .input-status { margin-left: auto; }
 }
 kbd {
   background: #333; padding: 2px 6px; border-radius: 3px;
-  border: 1px solid #555; font-family: monospace; font-size: 12px;
+  border: 1px solid #555; font-family: monospace; font-size: 10px;
 }
 
 .text-area { padding: 8px 20px; flex: 0 0 auto; }
@@ -141,7 +157,7 @@ main {
 
 .settings-bar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 16px;
   padding: 8px 20px;
@@ -153,7 +169,7 @@ main {
   flex-wrap: wrap;
 }
 .settings-bar strong { color: var(--enji-light); }
-.settings-left, .settings-right { display: flex; gap: 16px; }
+.settings-right { display: flex; align-items: center; gap: 16px; }
 
 .speed-btn {
   cursor: pointer;
@@ -213,6 +229,96 @@ main {
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 .toast.hidden { display: none; }
+
+/* PWA インストール促進スナックバー（左下に出るポップアップカード、7 秒で自動消去） */
+.install-snackbar {
+  position: fixed;
+  left: 20px;
+  bottom: 80px;
+  width: min(420px, calc(100vw - 40px));
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  background: var(--enji);
+  color: #fff;
+  border-radius: 12px;
+  z-index: 250;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(16px);
+  transition: opacity 240ms ease-out, transform 240ms ease-out;
+}
+/* 出現 → 表示維持 → 退出 を CSS アニメーションで完結させ、
+   モバイル環境で setTimeout が遅延・スキップされても確実に消えるようにする */
+.install-snackbar.shown {
+  pointer-events: auto;
+  animation: install-snackbar-life 7000ms ease-out forwards;
+}
+@keyframes install-snackbar-life {
+  0%   { opacity: 0; transform: translateY(16px); }
+  4%   { opacity: 1; transform: translateY(0); }
+  93%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(16px); }
+}
+.install-snackbar-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.install-snackbar-title {
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.2;
+}
+.install-snackbar-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.4;
+}
+.install-snackbar-btn {
+  padding: 9px 20px;
+  background: #fff;
+  color: var(--enji);
+  border: none;
+  border-radius: 999px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.install-snackbar-btn:hover { background: var(--accent); }
+.install-snackbar-btn.hidden { display: none; }
+.install-snackbar-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+.install-snackbar-close:hover { color: #fff; }
+@media (max-width: 480px) {
+  .install-snackbar {
+    left: 12px;
+    right: 12px;
+    bottom: 70px;
+    width: auto;
+    padding: 14px 18px;
+  }
+  .install-snackbar-title { font-size: 15px; }
+  .install-snackbar-text { font-size: 12px; }
+}
 
 /* Help panel */
 .help-content {
