@@ -768,7 +768,7 @@ function showHelp() {
   body.innerHTML = `
     <h3>基本操作</h3>
     <ul>
-      <li><strong>スイッチ：</strong>Space または Enter</li>
+      <li><strong>スイッチ：</strong>Space / Enter、または DualSense（○✕△□）／ Xbox（A B X Y）コントローラーのフェイスボタン</li>
       <li>えんじ色の縦帯が横方向に移動 → スイッチで列を選択</li>
       <li>続いて選択列内のセルが縦方向に移動 → スイッチで文字や機能を選択</li>
       <li>端まで来ると反対側にループします（常に同じ方向に進みます）</li>
@@ -810,6 +810,67 @@ window.addEventListener('keyup', (e) => {
   if (e.key === ' ' || e.key === 'Enter') switchHeld = false;
 });
 
+// ---------- ゲームパッド入力 ----------------------------------------------------
+// DualSense の ○✕△□ ／ Xbox の A B X Y はいずれも標準マッピングで index 0–3。
+// Gamepad API はイベントが無いため毎フレーム状態をポーリングし、押し下げエッジで onSwitch を呼ぶ。
+const FACE_BUTTON_INDEXES = [0, 1, 2, 3];
+let gamepadHeld = false;
+let gamepadPollHandle = null;
+let gamepadPollPrimed = false;
+
+function anyFaceButtonPressed() {
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for (const pad of pads) {
+    if (!pad) continue;
+    for (const idx of FACE_BUTTON_INDEXES) {
+      if (pad.buttons[idx] && pad.buttons[idx].pressed) return true;
+    }
+  }
+  return false;
+}
+
+function pollGamepads() {
+  const pressed = anyFaceButtonPressed();
+  if (!gamepadPollPrimed) {
+    // 接続直後は決定ボタンを押した状態で来るケースが多いので、
+    // 初回フレームは状態だけ取り込んで onSwitch は発火しない。
+    gamepadHeld = pressed;
+    gamepadPollPrimed = true;
+  } else if (pressed && !gamepadHeld) {
+    gamepadHeld = true;
+    onSwitch();
+  } else if (!pressed && gamepadHeld) {
+    gamepadHeld = false;
+  }
+  gamepadPollHandle = requestAnimationFrame(pollGamepads);
+}
+
+function startGamepadPolling() {
+  if (gamepadPollHandle != null) return;
+  gamepadPollPrimed = false;
+  gamepadPollHandle = requestAnimationFrame(pollGamepads);
+}
+
+function stopGamepadPolling() {
+  if (gamepadPollHandle != null) {
+    cancelAnimationFrame(gamepadPollHandle);
+    gamepadPollHandle = null;
+  }
+  gamepadHeld = false;
+  gamepadPollPrimed = false;
+}
+
+window.addEventListener('gamepadconnected', (e) => {
+  const name = (e.gamepad && e.gamepad.id) ? e.gamepad.id.split('(')[0].trim() : 'コントローラー';
+  showToast(`${name} を接続しました（○✕△□ / A B X Y がスイッチ）`, 2400);
+  startGamepadPolling();
+});
+
+window.addEventListener('gamepaddisconnected', () => {
+  const remaining = (navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean);
+  if (remaining.length === 0) stopGamepadPolling();
+});
+
 // ---------- 起動 ---------------------------------------------------------------
 function init() {
   setSpeed(loadSavedSpeed(1000));
@@ -817,6 +878,6 @@ function init() {
   startScan();
   $('#btn-slower').addEventListener('click', () => adjustSpeed(+200));
   $('#btn-faster').addEventListener('click', () => adjustSpeed(-200));
-  showToast('スイッチ：Space または Enter で操作', 3000);
+  showToast('スイッチ：Space / Enter、または ○✕△□ / A B X Y で操作', 3000);
 }
 document.addEventListener('DOMContentLoaded', init);
