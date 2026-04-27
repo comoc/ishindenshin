@@ -68,6 +68,8 @@ const state = {
   colDir: 1,
   rowCycles: 0,              // 行走査の周回数（2周で列走査へ自動復帰）
   scanTimer: null,
+  skipNextTick: false,       // true なら次の tick を 1 回スキップ（行走査開始直後に
+                             // 最初のセルへの判断時間を 2 倍取るために使う）
   composedText: '',
   // 濁音切替用
   dakutenList: null,
@@ -433,6 +435,11 @@ function tick() {
     advanceModal();
     return;
   }
+  // 行走査入り直後の最初のセルだけ、判断時間を 2 倍取るため tick を 1 回スキップ
+  if (state.skipNextTick) {
+    state.skipNextTick = false;
+    return;
+  }
   if (state.scanMode === 'col') advanceCol();
   else if (state.scanMode === 'row') advanceRow();
 }
@@ -505,6 +512,10 @@ function onSwitch() {
     state.rowDir = 1;
     state.rowCycles = 0;       // 周回カウンタをリセット
     applyHighlight();
+    // 行走査入り直後の最初のセルだけ、判断時間を走査速度の 2 倍にして
+    // 行き過ぎを防ぐ。タイマーを仕切り直しつつ、最初の tick はスキップ。
+    state.skipNextTick = true;
+    restartScan();
     return;
   }
 
