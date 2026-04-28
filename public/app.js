@@ -933,6 +933,22 @@ function showHelp() {
   openModal({ title: 'ヘルプ', body, options: [{ label: '閉じる', action: () => {} }] });
 }
 
+// ライト／ダークの 2 値切替。明示指定がない（OS 追従中の）状態で押された
+// 場合は OS と逆方向へ切り替える。設定は localStorage に保存する。
+function toggleTheme() {
+  const root = document.documentElement;
+  const curr = root.getAttribute('data-theme');
+  let next;
+  if (curr === 'light') next = 'dark';
+  else if (curr === 'dark') next = 'light';
+  else {
+    const osLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+    next = osLight ? 'dark' : 'light';
+  }
+  root.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+}
+
 // ---------- 入力デバイス接続状態（トップバー右の表示） --------------------------
 function setKeyboardStatus(connected) {
   const el = $('#kbd-status');
@@ -1142,6 +1158,7 @@ function init() {
   $('#btn-slower').addEventListener('click', () => adjustSpeed(+200));
   $('#btn-faster').addEventListener('click', () => adjustSpeed(-200));
   $('#btn-help').addEventListener('click', () => showHelp());
+  $('#btn-theme').addEventListener('click', () => toggleTheme());
   $('#btn-install').addEventListener('click', triggerInstall);
   $('#btn-install-dismiss').addEventListener('click', dismissInstallSnackbar);
   maybeShowInstallSnackbar();

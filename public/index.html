@@ -11,7 +11,17 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=33" />
+  <script>
+    /* localStorage で明示指定されたテーマを CSS 適用前に反映してフラッシュを防ぐ。
+       未指定時は CSS の @media (prefers-color-scheme) が OS 設定に追従する */
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') {
+        document.documentElement.setAttribute('data-theme', t);
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css?v=34" />
 </head>
 <body>
   <div id="app">
@@ -33,6 +43,7 @@
     <footer class="settings-bar">
       <div class="settings-left">
         <button type="button" class="speed-btn" id="btn-help" aria-label="ヘルプを表示">❓ ヘルプ</button>
+        <button type="button" class="speed-btn" id="btn-theme" aria-label="表示テーマを切り替え">🌓 テーマ</button>
       </div>
       <div class="settings-right">
         <span>走査速度：<strong id="speed-label">1.0秒</strong></span>
@@ -52,7 +63,7 @@
       <button type="button" id="btn-install-dismiss" class="install-snackbar-close" aria-label="閉じる">×</button>
     </div>
   </div>
-  <script src="app.js?v=33" defer></script>
+  <script src="app.js?v=34" defer></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
