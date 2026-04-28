@@ -140,15 +140,35 @@ main {
 .tile.func { background: #4a3a3a; font-size: clamp(11px, 2vmin, 22px); }
 
 /* Scanning highlights — えんじ色の枠 */
+/* 行ハイライト（列全体）：赤枠だけだと P/D 型色覚で識別しづらいので、
+   背景にも輝度差を付けて色＋明度の二重符号化にする */
 .row-highlight {
   border-color: var(--enji-bright) !important;
   box-shadow: inset 0 0 0 4px var(--enji);
+  background: #4a3030 !important;
 }
 .col-highlight {
   border-color: var(--accent) !important;
   background: #5a2030 !important;
   box-shadow: inset 0 0 0 4px var(--enji-bright);
 }
+/* 列ハイライト中の 1 セルに、色非依存の形状ヒント（▼）を上端に重ねる。
+   .tap-flashing 中は隠して押下フィードバックの邪魔をしない */
+.col-highlight:not(.tap-flashing)::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--accent);
+  pointer-events: none;
+  transition: opacity 500ms linear;
+}
+.col-highlight.fading::before { opacity: 0; }
 /* フォーカスが移った直後は輝度を盛り上げて、通常のハイライト色へ収束させる */
 .row-highlight,
 .col-highlight {
@@ -157,6 +177,20 @@ main {
 @keyframes highlight-boost {
   from { filter: brightness(1.2); }
   to   { filter: brightness(1); }
+}
+/* 前庭障害・てんかん配慮：OS 設定でアニメーション抑制を希望するユーザーには
+   ハイライトのアニメーション／フェードを無効化する */
+@media (prefers-reduced-motion: reduce) {
+  .row-highlight,
+  .col-highlight,
+  .dakuten-highlight {
+    animation: none !important;
+  }
+  .row-highlight.fading,
+  .col-highlight.fading {
+    transition: none !important;
+  }
+  .col-highlight:not(.tap-flashing)::before { transition: none !important; }
 }
 /* 次のセルへ移る直前の 500ms で色を徐々にフェードして移動を予告 */
 .row-highlight.fading,

@@ -374,6 +374,7 @@ function clearHighlights() {
   clearFadeTimer();
   $panel().querySelectorAll('.tile').forEach((el) => {
     el.classList.remove('row-highlight', 'col-highlight', 'dakuten-highlight', 'fading');
+    el.removeAttribute('aria-current');
   });
 }
 
@@ -382,12 +383,18 @@ function applyHighlight(nextTickInMs) {
   if (state.scanMode === 'col') {
     // 列スキャン：選択中の列の全セルを縦帯としてハイライト
     tilesOfCol(state.colIndex).forEach((el) => {
-      if (!el.classList.contains('empty')) el.classList.add('row-highlight');
+      if (!el.classList.contains('empty')) {
+        el.classList.add('row-highlight');
+        el.setAttribute('aria-current', 'location');
+      }
     });
   } else if (state.scanMode === 'row') {
     // 行スキャン：選択中の列内で 1 セルだけハイライト
     const sel = tileAt(state.rowIndex, state.colIndex);
-    if (sel) sel.classList.add('col-highlight');
+    if (sel) {
+      sel.classList.add('col-highlight');
+      sel.setAttribute('aria-current', 'true');
+    }
   }
   scheduleFade(nextTickInMs);
 }
@@ -633,7 +640,10 @@ function enterDakutenWindow(candidates) {
 function highlightDakutenCell() {
   clearHighlights();
   const sel = tileAt(state.rowIndex, state.colIndex);
-  if (sel) sel.classList.add('dakuten-highlight');
+  if (sel) {
+    sel.classList.add('dakuten-highlight');
+    sel.setAttribute('aria-current', 'true');
+  }
 }
 
 function cycleDakuten() {
