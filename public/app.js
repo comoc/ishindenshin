@@ -543,9 +543,9 @@ function onSwitch() {
     if (cell && !cell.empty && typeof cell.action === 'function') {
       cell.action();
     }
-    // 確定直後は走査速度の半分だけ余裕を持たせてから次の走査へ進める。
+    // 確定直後は走査速度だけ余裕を持たせてから次の走査へ進める。
     // setInterval の発火位相に依存せず、確定セルを目視できる時間を担保する。
-    const nextTickInMs = state.scanInterval / 2;
+    const nextTickInMs = state.scanInterval;
     // パネルがそのままなら列走査に戻す（パネル切替時は setPanel が既に処理）
     if (state.scanMode === 'row') {
       state.scanMode = 'col';
