@@ -1141,6 +1141,7 @@ function init() {
   startScan();
   $('#btn-slower').addEventListener('click', () => adjustSpeed(+200));
   $('#btn-faster').addEventListener('click', () => adjustSpeed(-200));
+  $('#btn-help').addEventListener('click', () => showHelp());
   $('#btn-install').addEventListener('click', triggerInstall);
   $('#btn-install-dismiss').addEventListener('click', dismissInstallSnackbar);
   maybeShowInstallSnackbar();

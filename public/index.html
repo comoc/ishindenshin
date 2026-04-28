@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=32" />
+  <link rel="stylesheet" href="styles.css?v=33" />
 </head>
 <body>
   <div id="app">
@@ -31,6 +31,9 @@
     <main id="panel-host" aria-live="polite"></main>
 
     <footer class="settings-bar">
+      <div class="settings-left">
+        <button type="button" class="speed-btn" id="btn-help" aria-label="ヘルプを表示">❓ ヘルプ</button>
+      </div>
       <div class="settings-right">
         <span>走査速度：<strong id="speed-label">1.0秒</strong></span>
         <span class="speed-btn" id="btn-slower">遅く [←]</span>
@@ -49,7 +52,7 @@
       <button type="button" id="btn-install-dismiss" class="install-snackbar-close" aria-label="閉じる">×</button>
     </div>
   </div>
-  <script src="app.js?v=32" defer></script>
+  <script src="app.js?v=33" defer></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

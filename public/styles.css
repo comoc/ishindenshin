@@ -229,7 +229,7 @@ main {
 
 .settings-bar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: 16px;
   padding: 8px 20px;
@@ -241,6 +241,7 @@ main {
   flex-wrap: wrap;
 }
 .settings-bar strong { color: var(--enji-light); }
+.settings-left  { display: flex; align-items: center; gap: 16px; }
 .settings-right { display: flex; align-items: center; gap: 16px; }
 
 .speed-btn {
@@ -251,6 +252,8 @@ main {
   background: #1f1f1f;
   color: var(--text);
   user-select: none;
+  font-family: inherit;
+  font-size: inherit;
 }
 .speed-btn:hover { background: #2a2a2a; border-color: var(--enji); }
 .speed-btn:active { background: var(--enji); border-color: var(--enji-light); }
