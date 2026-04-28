@@ -13,7 +13,11 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 body {
-  font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
+  /* UD フォント（BIZ UDPGothic / UD デジタル 教科書体）を最優先。低視力・
+     ディスレクシア・高齢ユーザー向けに字形が読み取りやすいため。
+     未搭載環境では従来の Hiragino / Yu Gothic / Meiryo にフォールバック */
+  font-family: 'BIZ UDPGothic', 'UD デジタル 教科書体 N-R',
+               'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Meiryo', sans-serif;
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
