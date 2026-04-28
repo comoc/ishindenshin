@@ -326,7 +326,8 @@ function renderPanel() {
           cell.action();
           // アクションが濁音モードに入った場合は内部の highlightDakutenCell が
           // タップしたセルへ適切な濁音ハイライトを当ててくれるのでここでは触らない。
-          restartScan();
+          // タップ確定もスイッチ確定と同様、次の走査までは走査速度の半分だけ待つ。
+          restartScan(state.scanInterval / 2);
         });
       }
       el.dataset.row = r;
@@ -376,7 +377,7 @@ function clearHighlights() {
   });
 }
 
-function applyHighlight() {
+function applyHighlight(nextTickInMs) {
   clearHighlights();
   if (state.scanMode === 'col') {
     // 列スキャン：選択中の列の全セルを縦帯としてハイライト
@@ -388,21 +389,26 @@ function applyHighlight() {
     const sel = tileAt(state.rowIndex, state.colIndex);
     if (sel) sel.classList.add('col-highlight');
   }
-  scheduleFade();
+  scheduleFade(nextTickInMs);
 }
 
 // 次の走査までの最後 500ms でハイライト色をフェードし、移動を予告する。
 const FADE_DURATION = 500;
 let fadeTimer = null;
 
-function scheduleFade() {
+function scheduleFade(nextTickInMs) {
   clearFadeTimer();
-  if (state.scanInterval <= FADE_DURATION) return;
+  // 確定直後など、次の tick が標準間隔より短い場面ではその短縮済みの
+  // 残り時間を基準にフェードを予告する。
+  const interval = (nextTickInMs != null && nextTickInMs > 0)
+    ? nextTickInMs
+    : state.scanInterval;
+  if (interval <= FADE_DURATION) return;
   fadeTimer = setTimeout(() => {
     $panel().querySelectorAll('.row-highlight, .col-highlight').forEach((el) => {
       el.classList.add('fading');
     });
-  }, state.scanInterval - FADE_DURATION);
+  }, interval - FADE_DURATION);
 }
 
 function clearFadeTimer() {
@@ -413,21 +419,33 @@ function clearFadeTimer() {
 }
 
 // ---------- 走査ロジック --------------------------------------------------------
-function startScan() {
+function startScan(initialDelayMs) {
   stopScan();
-  state.scanTimer = setInterval(tick, state.scanInterval);
+  if (!(initialDelayMs > 0)) {
+    state.scanTimer = setInterval(tick, state.scanInterval);
+    return;
+  }
+  // 文字確定直後など、最初の 1 tick だけ任意の遅延で発火させる用途。
+  // 以降は通常の走査速度で動かす。
+  state.scanTimer = setTimeout(() => {
+    tick();
+    state.scanTimer = setInterval(tick, state.scanInterval);
+  }, initialDelayMs);
 }
 
 function stopScan() {
   if (state.scanTimer) {
+    // setTimeout / setInterval の ID 空間はブラウザで共有されているため
+    // どちらでクリアしても安全だが、用途を明示するために両方呼ぶ。
     clearInterval(state.scanTimer);
+    clearTimeout(state.scanTimer);
     state.scanTimer = null;
   }
   clearFadeTimer();
 }
 
-function restartScan() {
-  startScan();
+function restartScan(initialDelayMs) {
+  startScan(initialDelayMs);
 }
 
 function tick() {
@@ -525,11 +543,15 @@ function onSwitch() {
     if (cell && !cell.empty && typeof cell.action === 'function') {
       cell.action();
     }
+    // 確定直後は走査速度の半分だけ余裕を持たせてから次の走査へ進める。
+    // setInterval の発火位相に依存せず、確定セルを目視できる時間を担保する。
+    const nextTickInMs = state.scanInterval / 2;
     // パネルがそのままなら列走査に戻す（パネル切替時は setPanel が既に処理）
     if (state.scanMode === 'row') {
       state.scanMode = 'col';
-      applyHighlight();
+      applyHighlight(nextTickInMs);
     }
+    restartScan(nextTickInMs);
   }
 }
 
