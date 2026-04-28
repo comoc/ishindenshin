@@ -138,6 +138,13 @@ main {
 .tile .sub { font-size: clamp(8px, 1.4vmin, 12px); color: #bbb; margin-top: 4px; }
 .tile.empty { background: transparent; pointer-events: none; }
 .tile.func { background: #4a3a3a; font-size: clamp(11px, 2vmin, 22px); }
+/* 操作不可のセル：走査・クリックの両方からスキップされる。
+   存在自体は見せて位置を学習させたいので、半透明にして disable を表現する */
+.tile.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: not-allowed;
+}
 
 /* Scanning highlights — えんじ色の枠 */
 /* 行ハイライト（列全体）：赤枠だけだと P/D 型色覚で識別しづらいので、

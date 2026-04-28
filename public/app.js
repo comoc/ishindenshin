@@ -75,6 +75,11 @@ const state = {
   dakutenList: null,
   dakutenIdx: 0,
   dakutenTimer: null,
+  // 全消去のアンドゥ用：直前に消した内容を 5 秒間だけ保持し、
+  // その間にもう一度「全消去」が押されたら復元する
+  lastClearedText: null,
+  lastClearedAt: 0,
+  undoTimer: null,
   // モーダル選択用
   modal: null,               // { options:[{label,action}], index, dir, timer }
 };
@@ -289,6 +294,8 @@ function renderPanel() {
       } else {
         if (cell.kind === 'func') el.classList.add('func');
         if (cell.kind === 'icon') el.classList.add('icon');
+        if (cell.role) el.dataset.role = cell.role;
+        if (cell.disabled && cell.disabled()) el.classList.add('disabled');
         const lab = document.createElement('div');
         lab.textContent = cell.label;
         el.appendChild(lab);
@@ -303,6 +310,8 @@ function renderPanel() {
         // タップ・フラッシュだけが目立つようにする（次の走査 tick で再ハイライト）。
         el.addEventListener('click', () => {
           if (typeof cell.action !== 'function') return;
+          // disabled なセル（例: 復元待機していない時の復元ボタン）は素通し。
+          if (cell.disabled && cell.disabled()) return;
           // 濁音／捨て仮名ウィンドウ中に同じタイルを連続タップしたら、もう一度
           // 同じ文字を挿入するのではなく候補をサイクル（か→が、は→ば→ぱ など）。
           // キーボードの onSwitch と同じ挙動に揃える。
@@ -383,7 +392,7 @@ function applyHighlight(nextTickInMs) {
   if (state.scanMode === 'col') {
     // 列スキャン：選択中の列の全セルを縦帯としてハイライト
     tilesOfCol(state.colIndex).forEach((el) => {
-      if (!el.classList.contains('empty')) {
+      if (!el.classList.contains('empty') && !el.classList.contains('disabled')) {
         el.classList.add('row-highlight');
         el.setAttribute('aria-current', 'location');
       }
@@ -483,7 +492,15 @@ function advanceCol() {
 }
 
 function colHasSelectable(c) {
-  return currentPanel.grid.some((row) => row[c] && !row[c].empty);
+  return currentPanel.grid.some((row) => isSelectable(row[c]));
+}
+
+// 走査対象になり得るセルかどうか。empty と、disabled() が true を返す
+// セルは走査・クリックの両方からスキップする。
+function isSelectable(cell) {
+  if (!cell || cell.empty) return false;
+  if (cell.disabled && cell.disabled()) return false;
+  return true;
 }
 
 // 行走査：縦方向（選択列内のセルが上下に動く）。empty はスキップ。端で逆側へラップ（一方向）。
@@ -496,8 +513,7 @@ function advanceRow() {
     if (next < 0)            { next = total - 1; state.rowCycles++; }
     else if (next >= total)  { next = 0;         state.rowCycles++; }
     state.rowIndex = next;
-    const cell = currentPanel.grid[next][c];
-    if (cell && !cell.empty) break;
+    if (isSelectable(currentPanel.grid[next][c])) break;
   }
   if (state.rowCycles >= 2) {
     state.scanMode = 'col';
@@ -607,6 +623,12 @@ function appendText(s) {
   state.composedText += s;
   $composed().value = state.composedText;
   $composed().scrollTop = $composed().scrollHeight;
+  // 入力が再開したらアンドゥは破棄して「復元」ボタンを無効化する
+  if (state.lastClearedText) {
+    state.lastClearedText = null;
+    clearTimeout(state.undoTimer);
+    refreshRestoreButton();
+  }
 }
 
 function deleteOne() {
@@ -619,9 +641,43 @@ function deleteOne() {
 }
 
 function clearText() {
+  if (!state.composedText) return;
+  // 直前の内容を保持し、5 秒以内に「復元」ボタンが押されたら戻せるようにする
+  state.lastClearedText = state.composedText;
+  state.lastClearedAt = Date.now();
   state.composedText = '';
   $composed().value = '';
   showToast('文章を消去しました');
+  clearTimeout(state.undoTimer);
+  state.undoTimer = setTimeout(() => {
+    state.lastClearedText = null;
+    refreshRestoreButton();
+  }, 5000);
+  refreshRestoreButton();
+}
+
+// composedText が空で、直前 5 秒以内に消した内容があれば復元する。
+// 復元したら true を返す。「復元」ボタンの action から呼ぶ。
+function tryUndoClear() {
+  if (state.composedText) return false;
+  if (!state.lastClearedText) return false;
+  if (Date.now() - state.lastClearedAt > 5000) return false;
+  state.composedText = state.lastClearedText;
+  $composed().value = state.composedText;
+  state.lastClearedText = null;
+  clearTimeout(state.undoTimer);
+  showToast('文章を復元しました');
+  refreshRestoreButton();
+  return true;
+}
+
+// 「復元」ボタンの有効／無効状態を現在のアンドゥ状態に同期させる。
+// 無効な間は .disabled クラスを付け、走査もクリックも素通しになる。
+function refreshRestoreButton() {
+  const enabled = !!state.lastClearedText;
+  document.querySelectorAll('.tile[data-role="restore"]').forEach((el) => {
+    el.classList.toggle('disabled', !enabled);
+  });
 }
 
 // ---------- 濁音・半濁音切替ウィンドウ -------------------------------------------
